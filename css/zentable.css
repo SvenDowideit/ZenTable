@@ -1,10 +1,10 @@
-.table {
+.zentable {
     position: relative;
     border: 1px solid black;
     width: 100%;    
 }
 
-.table .overlay {
+.zentable .overlay {
     position: absolute;
     width: 100%;
     height: 100%;
@@ -14,28 +14,28 @@
     
 }
 
-.table .row, .table .headerrow {
+.zentable .row, .zentable .headerrow {
     border-bottom: 1px solid #A0A0A0;
     height: 20px;
     white-space: nowrap;
 }
 
-.table .row {
+.zentable .row {
     cursor: pointer;
 }
 
-.table .row .hover {
+.zentable .row .hover {
     background: url('ztimgs/back1.gif');
     color: #f0e0c0;
 }
 
 
-.table .headerrow { 
+.zentable .headerrow { 
   height: 22px; 
   border-bottom: 1px solid black;
 }
 
-.table .ascending, .table .descending {
+.zentable .ascending, .zentable .descending {
     width: 16px;
     height: 16px;
     top: 2px;
@@ -43,15 +43,15 @@
     right: 2px;
 }
 
-.table .ascending  {
+.zentable .ascending  {
     background: url(ztimgs/order-asc.gif);
 }
 
-.table .descending  {
+.zentable .descending  {
     background: url(ztimgs/order-desc.gif);
 }
 
-.table .cell {
+.zentable .cell {
     font-size: 14px;
     border-right: 1px solid #A0A0A0;
 
@@ -63,9 +63,9 @@
     overflow: hidden;
 }
 
-.table .tmp .cell { background-color:orange; }
+.zentable .tmp .cell { background-color:orange; }
 
-.table .header {
+.zentable .header {
     background: url(ztimgs/back-strip.gif);
     border-right: 1px solid black;
     line-height: 20px;
@@ -80,12 +80,12 @@
     position: relative;    
 }
 
-.table .header:hover {
+.zentable .header:hover {
     background: url(ztimgs/back-strip-hover.gif);
     color:  white;
 }
 
-.table .resize {
+.zentable .resize {
     cursor: col-resize;
     width: 8px;
     height: 22px;
@@ -93,7 +93,7 @@
     z-index: 3;
 }
 
-.table .scroll {
+.zentable .scroll {
     z-index: 1;
     background-color: #A0A0A0;
     background: url(ztimgs/back-scrollbar.gif);
@@ -105,12 +105,12 @@
     display: none;    
 }
 
-.table .scroll .drag_container {
+.zentable .scroll .drag_container {
     position:relative;
 }
 
 
-.table .scroll .drag {
+.zentable .scroll .drag {
     position: absolute;
     width: 18px;
     height: 22px;
@@ -121,25 +121,25 @@
     background-color: #b0b0b0;
 }
 
-.table .scroll .buttonup, .table .scroll .buttondn {
+.zentable .scroll .buttonup, .zentable .scroll .buttondn {
     width: 20px;
     height: 22px;
     background-color: #CCCCCC;
 }
 
-.table .scroll .buttonup { 
+.zentable .scroll .buttonup { 
   border-bottom: 1px solid #606060; 
   background: url(ztimgs/scroll-up.gif) no-repeat -1px 0px;
 }
 
-.table .scroll .buttondn {
+.zentable .scroll .buttondn {
     position: absolute;
     border-top: 1px solid #606060;
     bottom: 0px;
     background: url(ztimgs/scroll-down.gif) no-repeat -1px 0px;
 }
 
-.table .tip {
+.zentable .tip {
     position: absolute;
     color: black;
     border: 1px solid black;
@@ -150,25 +150,25 @@
     display: none;
 }
 
-.table .field {
+.zentable .field {
     position: absolute;
     z-index: 3;
     display: none;
     height: 21px;
 }
 
-.table .field input {
+.zentable .field input {
     font-family: Arial;
     font-size: 14px;
 }
 
-.table .field input {
+.zentable .field input {
     border: 1px solid black;
     padding: 1px 0px 1px 4px;
     background: url(ztimgs/input.gif);
 }
 
-.table .status {
+.zentable .status {
     height: 14px;
     background-color: #707070;
     color: #e0e0e0;
@@ -178,11 +178,11 @@
 }
 
 
-.table .status #message {
+.zentable .status #message {
     float: left;
 }
 
-.table .status #loading {
+.zentable .status #loading {
     float: right;
     margin-right: 20px;
     padding: 0px 8px;
@@ -195,7 +195,7 @@
     display: none;
 }
 
-#data {
+.zentable #data {
     position: absolute;
     z-index: 10;
     top: 51px;
@@ -206,7 +206,7 @@
     background-color: white;
 }
 
-#header {
+.zentable #header {
     border-bottom: 1px solid black;
     height: 50px;
     z-index: 99;
