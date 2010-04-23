@@ -1,6 +1,7 @@
 /**
     Zentable v0.9.1 Developed by Zentense (Aug'09)
     Copyright (c) 2009 Jose R. Cabanes
+    Copyright (c) 2010 SvenDowideit@fosiki.com
     Dual licensed under the MIT and GPL licenses.
     Needs jquery.timers, Draggable from jquery-ui and jquery.mousewheel
  */
@@ -23,10 +24,31 @@
                 instance.editCallback= opts.onedit;
 
             if (opts.data instanceof Array) {
-                var data= new $.fn.zentable.ArrayDataSource(opts.data);
-                data.setCols(opts.cols);
+//                var data= new $.fn.zentable.ArrayDataSource(opts.data);
+//                data.setCols(opts.cols);
+//                instance.setDataSource(data);
+//                instance.dataLoaded();
+
+                var data= new $.fn.zentable.ArrayDataSource(opts.data, opts.cols, instance.getRows());
                 instance.setDataSource(data);
-                instance.dataLoaded();
+                data.setFilters(opts.filters);
+                data.setOrder(opts.order);
+                for(i=0; i<opts.filters.length; i++) {
+                    var f= $("#"+opts.filters[i]);
+
+                    switch(f.attr("type")) {
+                    case "text":
+                        f.keyup(function() { $(this).oneTime(500, 'filter', instance.data.refresh); });
+                        break;
+                    case "select-one":
+                    case "checkbox":
+                        f.change(function() { instance.data.refresh(); });              
+                    }
+
+                }
+                data.refresh();
+
+
             } else 
             if (opts.data!=undefined) {
                 var data= new $.fn.zentable.AJAXDataSource(opts.data, instance.getRows());
@@ -596,7 +618,7 @@
         this.setListener= function() {};
     };
 
-    $.fn.zentable.ArrayDataSource= function(array) {
+    $.fn.zentable.OLDArrayDataSource= function(array) {
         this.base= $.fn.zentable.DataSource;
         this.base();
 
@@ -619,43 +641,43 @@
         this.base= $.fn.zentable.DataSource;
         this.base();
 
-        var order= "";
-        var cache= new Array();
-        var rowclasses= new Array();
-        var instance= this;
-        var totalRows= 0;
-        var loading= false;
+        this.order= "";
+        this.cache= new Array();
+        this.rowclasses= new Array();
+        this.instance= this;
+        this.totalRows= 0;
+        this.loading= false;
         pageSize== null ? 10 : pageSize;
-        var fields= [];
-        var filters= [];
-        var ready= false;
-        var listener= null;
+        this.fields= [];
+        this.filters= [];
+        this.ready= false;
+        this.listener= null;
 
         this.refresh= function() {
-            instance.clearCache();
-            loadPage(0);
+            this.instance.clearCache();
+            this.loadPage(0);
         };
 
         this.setListener= function(l) {
-            listener= l;
-            listener.setLoading(loading);
+            this.listener= l;
+            this.listener.setLoading(this.loading);
         };
 
-        this.setFilters= function(f) { filters= f; };
+        this.setFilters= function(f) { this.filters= f; };
 
-        this.setOrder= function(o) { order= o; };
+        this.setOrder= function(o) { this.order= o; };
 
-        this.clearCache= function() { cache= new Array(); };
+        this.clearCache= function() { this.cache= new Array(); };
 
-        this.isDataReady= function() { return ready; };
+        this.isDataReady= function() { return this.ready; };
 
         this.processXML= function(response, stat) {
             var root= response.documentElement;
-            totalRows= $(response).find("totalrows").text(); 
+            this.totalRows= $(response).find("totalrows").text(); 
 
             var offset= $(response).find("offset").text();
             $(response).find("headers").find("col").each(function(i) { 
-                instance.cols[i]= { 
+                this.instance.cols[i]= { 
                     name:$(this).text(),
                     id: $(this).attr("id"),
                     html:$(this).attr("html")!=null,
@@ -667,7 +689,7 @@
             });
 
             $(response).find("row").each(function(i) {
-                cache[offset*1+i]= { 
+                this.cache[offset*1+i]= { 
                         values:new Array(), 
                         clss:$(this).attr("class") };
                 $(this).find("col").each(function(j) {
@@ -675,60 +697,60 @@
                     var tmp= instance.cols[j].html ? t.text() : t.text().split("<").join("&lt;").split(">").join("&gt;");
                     if (t.attr("link")!=null)
                         tmp= "<a href=\""+t.attr("link")+"\">" + tmp + "</a>";
-                    cache[offset*1+i].values[j]= tmp;
+                    this.cache[offset*1+i].values[j]= tmp;
                 });            
             });
 
             $(response).find("totals").find("col").each(function(i) {
-                instance.totals[i]= $(this).text();
+                this.instance.totals[i]= $(this).text();
             });
 
-            listener.dataLoaded();         
-            loading= false;     
-            listener.setLoading(false);       
-            ready= true;
+            this.listener.dataLoaded();         
+            this.loading= false;     
+            this.listener.setLoading(false);       
+            this.ready= true;
         };
 
         this.sort= function(i) {
             var col= this.cols[i].id==null ? this.cols[i].name : this.cols[i].id;
-            if (order==col)
-                order= col+" desc";
+            if (this.order==col)
+                this.order= col+" desc";
             else
-                order= col;
-            listener.setOrderSign(i, new RegExp (" desc$").test(order));
-            cache= new Array();
-            loadPage(0);            
+                this.order= col;
+            this.listener.setOrderSign(i, new RegExp (" desc$").test(this.order));
+            this.cache= new Array();
+            this.loadPage(0);            
         };
 
         this.getSize= function() {
-            return totalRows;
+            return this.totalRows;
         };
 
         this.getRow= function(row) {
-            if (row<totalRows && !cache[row] && !loading)
-                loadPage(row);
-            if (cache[row]==null)
+            if (row<this.getSize() && !this.cache[row] && !this.loading)
+                this.loadPage(row);
+            if (this.cache[row]==null)
                 return null;
-           return cache[row].values;
+           return this.cache[row].values;
         };
 
         this.getRowClass= function(row) {
-            if (cache[row]==null)
+            if (this.cache[row]==null)
                 return null;
-            return cache[row].clss;
+            return this.cache[row].clss;
         };
 
         this.set= function(row, col, value) {       
         };
 
-        function loadPage(row) {
-            loading= true;
-            if (listener!=null)
-                listener.setLoading(true);
+        this.loadPage = function(row) {
+            this.loading= true;
+            if (this.listener!=null)
+                this.listener.setLoading(true);
         
             var filtSQL= '';
-            for (i=0; i<filters.length; i++) {                
-                var field= $("#"+filters[i]);
+            for (i=0; i<this.filters.length; i++) {                
+                var field= $("#"+this.filters[i]);
                 var value= "";
                 switch (field.attr("type")) {
                 case 'select-one':
@@ -744,15 +766,65 @@
 
             $.ajax({
                 type:"GET",
-                url: href+"&start="+row+"&pagesize="+pageSize+"&order="+order+filtSQL,
+                url: href+"&start="+row+"&pagesize="+this.pageSize+"&order="+this.order+filtSQL,
                 dataType: "xml",
-                success:function(data, stat) { instance.processXML(data); }
+                success:function(data, stat) { this.instance.processXML(data); }
     //            error: function(req, stat, error) { alert(stat+"; "+error); }
              });
         };
-
-     
+    
     };
+    $.fn.zentable.ArrayDataSource= function(array, cols, pageSize) {
+        this.base= $.fn.zentable.AJAXDataSource;
+        this.base('http://yeah.no/really', pageSize);
+        
+        this.actualArray = array;
+        this.cols = cols;
 
+        this.getSize= function() {
+            return this.actualArray.length;
+        };
+
+        this.loadPage = function(row) {
+            //return;
+            this.loading= true;
+            var self = this;
+            var offset = 0;
+            $(self.actualArray).each(function(i) {
+                self.cache[offset*1+i]= { 
+                        values:new Array(), 
+                        clss:$(this).attr("class") };
+                $(this).each(function(j) {
+                    var t= $(this);
+                    var tmp = this;
+//                    var tmp= self.cols[j].html ? t.text() : t.text().split("<").join("&lt;").split(">").join("&gt;");
+                    if (t.attr("link")!=null)
+                        tmp= "<a href=\""+t.attr("link")+"\">" + tmp + "</a>";
+                    self.cache[offset*1+i].values[j]= tmp;
+                });            
+            });
+
+    //        $(response).find("totals").find("col").each(function(i) {
+    //            instance.totals[i]= $(this).text();
+    //        });
+    
+            this.listener.dataLoaded();         
+            this.loading= false;     
+            this.listener.setLoading(false);       
+            this.ready= true;
+        }
+        this.sort= function(i) {
+            var col= this.cols[i].id==null ? this.cols[i].name : this.cols[i].id;
+            if (this.order==col)
+                this.order= col+" desc";
+            else
+                this.order= col;
+            this.listener.setOrderSign(i, new RegExp (" desc$").test(this.order));
+            //this.cache= new Array();
+            //TODO: sort this.actualArray? that sounds like a mistake (tho that is what the ajax one basically does..)
+            
+            this.loadPage(0);            
+        };
+    };
 }) (jQuery);
 
