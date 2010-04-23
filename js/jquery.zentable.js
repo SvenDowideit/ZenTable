@@ -23,53 +23,30 @@
             if (opts.onedit) 
                 instance.editCallback= opts.onedit;
 
+            var data;
             if (opts.data instanceof Array) {
-//                var data= new $.fn.zentable.ArrayDataSource(opts.data);
-//                data.setCols(opts.cols);
-//                instance.setDataSource(data);
-//                instance.dataLoaded();
-
-                var data= new $.fn.zentable.ArrayDataSource(opts.data, opts.cols, instance.getRows());
-                instance.setDataSource(data);
-                data.setFilters(opts.filters);
-                data.setOrder(opts.order);
-                for(i=0; i<opts.filters.length; i++) {
-                    var f= $("#"+opts.filters[i]);
-
-                    switch(f.attr("type")) {
-                    case "text":
-                        f.keyup(function() { $(this).oneTime(500, 'filter', instance.data.refresh); });
-                        break;
-                    case "select-one":
-                    case "checkbox":
-                        f.change(function() { instance.data.refresh(); });              
-                    }
-
-                }
-                data.refresh();
-
-
+                data= new $.fn.zentable.ArrayDataSource(opts.data, opts.cols, instance.getRows());
             } else 
             if (opts.data!=undefined) {
-                var data= new $.fn.zentable.AJAXDataSource(opts.data, instance.getRows());
-                instance.setDataSource(data);
-                data.setFilters(opts.filters);
-                data.setOrder(opts.order);
-                for(i=0; i<opts.filters.length; i++) {
-                    var f= $("#"+opts.filters[i]);
-
-                    switch(f.attr("type")) {
-                    case "text":
-                        f.keyup(function() { $(this).oneTime(500, 'filter', instance.data.refresh); });
-                        break;
-                    case "select-one":
-                    case "checkbox":
-                        f.change(function() { instance.data.refresh(); });              
-                    }
-
-                }
-                data.refresh();
+                data= new $.fn.zentable.AJAXDataSource(opts.data, instance.getRows());
             }
+            instance.setDataSource(data);
+            data.setFilters(opts.filters);
+            data.setOrder(opts.order);
+            for(i=0; i<opts.filters.length; i++) {
+                var f= $("#"+opts.filters[i]);
+
+                switch(f.attr("type")) {
+                case "text":
+                    f.keyup(function() { $(this).oneTime(500, 'filter', instance.data.refresh); });
+                    break;
+                case "select-one":
+                case "checkbox":
+                    f.change(function() { instance.data.refresh(); });              
+                }
+
+            }
+            data.refresh();
 
 
         });
@@ -161,6 +138,7 @@
         };
 
         this.refresh= function() {
+//TODO: this seems un-necessarily presumtious - shouldn't the datasource decide if it needs a clear - ie, shouldn't this call loadPage?
             this.data.clearCache();
             needsScroll= true;
         };
@@ -460,17 +438,18 @@
 
             table.mouseleave(function() { instance.hideTip();});
       
+//TODO: use tab to accept the edit, and if it's OK, move to the next editable element..
             $(document).keydown(function(e) {
                 if (editing!=null) {
                     switch(e.keyCode) {
                         case 13: 
-                            for (x=0; x<cols;x++)
-                                if (editing.hasClass("col"+x)) 
+                            for (columnIndex=0; columnIndex<cols;columnIndex++)
+                                if (editing.hasClass("col"+columnIndex)) 
                                     break;
                             y= editing.parent().attr("row")*1;
                             var val= field.children().eq(0).get(0).value;
-                            var c= columns[x].id==null ? columns[x].name : columns[x].id;
-                            instance.editCallback(editing, val, c, y + scroll.getCurrentRow() );                
+                            var columnName= columns[columnIndex].id==null ? columns[columnIndex].name : columns[columnIndex].id;
+                            instance.editCallback(editing, val, columnName, y + scroll.getCurrentRow(), columnIndex );                
                         case 27: instance.endEdit(); break;
                     }           
                     return true;
@@ -618,24 +597,6 @@
         this.setListener= function() {};
     };
 
-    $.fn.zentable.OLDArrayDataSource= function(array) {
-        this.base= $.fn.zentable.DataSource;
-        this.base();
-
-        this.getSize= function() {
-            return array.length;
-        };
-
-        this.getRow= function(row) {
-            return array[row];
-        };
-
-        this.set= function(row, col, value) {
-            array[row][col]= value;
-        };
-    };
-
-
     $.fn.zentable.AJAXDataSource= function(href, pageSize) {
         href= href.indexOf("?")==-1 ? href+"?" : href;
         this.base= $.fn.zentable.DataSource;
@@ -643,6 +604,8 @@
 
         this.order= "";
         this.cache= new Array();
+        this.cacheOrder = '';
+        this.cacheContents = '';        //TODO: this should contain the request parameters the cache is already filled with, so we dn't ask for the same thing twice.
         this.rowclasses= new Array();
         this.instance= this;
         this.totalRows= 0;
@@ -665,6 +628,7 @@
 
         this.setFilters= function(f) { this.filters= f; };
 
+        //TODO: i suspect this is broken unless the ajax data is actually in this order - need to simplify so there is only _one_ way to order the dataset, not 2
         this.setOrder= function(o) { this.order= o; };
 
         this.clearCache= function() { this.cache= new Array(); };
@@ -781,39 +745,31 @@
         this.actualArray = array;
         this.cols = cols;
 
+        this.set= function(row, col, value) {
+            this.actualArray[row][col]= value;
+            this.isDirty = true;        //force a re-sort..
+            //TODO: this should call sort, not loadPage?
+            this.loadPage(0);
+        };
+
         this.getSize= function() {
             return this.actualArray.length;
         };
 
-        this.loadPage = function(row) {
-            //return;
-            this.loading= true;
-            var self = this;
-            var offset = 0;
-            $(self.actualArray).each(function(i) {
-                self.cache[offset*1+i]= { 
-                        values:new Array(), 
-                        clss:$(this).attr("class") };
-                $(this).each(function(j) {
-                    var t= $(this);
-                    var tmp = this;
-//                    var tmp= self.cols[j].html ? t.text() : t.text().split("<").join("&lt;").split(">").join("&gt;");
-                    if (t.attr("link")!=null)
-                        tmp= "<a href=\""+t.attr("link")+"\">" + tmp + "</a>";
-                    self.cache[offset*1+i].values[j]= tmp;
-                });            
-            });
+        this.setOrder= function(o) { 
+            this.order= o; 
+            for (var idx=0;idx<this.getSize();idx++) {
+                var colName = this.cols[idx].id==null ? this.cols[idx].name : this.cols[idx].id;
+                if (colName == this.order) {
+                    this.orderColumn = idx;
+                    break;
+                }
+            }
+            this.isDirty = true;
+        };
 
-    //        $(response).find("totals").find("col").each(function(i) {
-    //            instance.totals[i]= $(this).text();
-    //        });
-    
-            this.listener.dataLoaded();         
-            this.loading= false;     
-            this.listener.setLoading(false);       
-            this.ready= true;
-        }
         this.sort= function(i) {
+            this.orderColumn = i;
             var col= this.cols[i].id==null ? this.cols[i].name : this.cols[i].id;
             if (this.order==col)
                 this.order= col+" desc";
@@ -823,8 +779,65 @@
             //this.cache= new Array();
             //TODO: sort this.actualArray? that sounds like a mistake (tho that is what the ajax one basically does..)
             
-            this.loadPage(0);            
+            //this.loadPage(0);            
+        }
+        sortElements = function(a, b) {
+            //TODO: frigging heck - the sort function is called in a global context, and I can't work out howto pass a parameter to it
+            //          I'd rather not have to eval() to create a custom sort function, but if I can't find a real way, thats what i'll have to do.
+            var i = $.fn.zentable.instance.data.orderColumn;
+            //reverse sort
+            if (new RegExp (" desc$").test($.fn.zentable.instance.data.order)) {
+                var t = a;
+                a = b;
+                b = t;
+            }
+            //TODO: what about undefined elements?
+            //text sort..
+            //TODO: um, do the sort with string.toLowerCase()
+            return ((a[i] < b[i]) ? -1 : ((a[i] > b[i]) ? 1 : 0));
+        }
+        this.refresh= function() {
+            this.isDirty = true;
+            this.loadPage(0);
         };
+        this.loadPage = function(row) {
+            //return;
+            this.loading= true;
+            var self = this;
+            var offset = 0;
+            
+            //sorting.
+            if ((this.isDirty == true) || (this.order != this.cacheOrder)) {
+                self.actualArray.sort(function(a,b) { return sortElements(a, b);});
+                this.cacheOrder = this.order;
+            }
+            
+            $(self.actualArray).each(function(i) {
+                self.cache[offset*1+i]= { 
+                        values:new Array(), 
+                        clss:$(this).attr("class") };
+                $(this).each(function(j) {
+                    var t= $(this);
+                    var tmp = this;
+//TODO: not sure this is relevant - it looks like the data payload for html/ajax is different from the array one.
+//                    var tmp= self.cols[j].html ? t.text() : t.text().split("<").join("&lt;").split(">").join("&gt;");
+//                    if (t.attr("link")!=null)
+//                        tmp= "<a href=\""+t.attr("link")+"\">" + tmp + "</a>";
+                    self.cache[offset*1+i].values[j]= tmp;
+                });            
+            });
+
+    //        $(response).find("totals").find("col").each(function(i) {
+    //            instance.totals[i]= $(this).text();
+    //        });
+    
+   
+            this.listener.dataLoaded();         
+            this.loading= false;     
+            this.listener.setLoading(false);       
+            this.ready= true;
+            this.isDirty = false;
+        }
     };
 }) (jQuery);
 
